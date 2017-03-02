@@ -19,26 +19,26 @@ terminus_check() {
 # Authenticate with Pantheon.
 ###
 terminus_auth() {
-	response=`terminus auth:whoami`
-	if [ "$response" == "" ]; then
-		echo -e "You are not authenticated with Terminus..."
-		terminus auth:login
-		if [ $? == 0 ]; then
+  response=`terminus auth:whoami`
+  if [ "$response" == "" ]; then
+    echo -e "You are not authenticated with Terminus..."
+    terminus auth:login
+    if [ $? == 0 ]; then
       echo -e "Login successful!"
-		else
+    else
       echo "Login failed. Please re-run the script and try again."
-			exit 2
-		fi
-	else
-		echo -e "You are authenticated with Terminus as:"
-		echo -e " $response"
-		read -p "[y]Continue or [n]login as someone else? [y/n] " login;
-		case $login in
-			[Yy]* ) ;;
-			[Nn]* ) terminus auth:logout;
+      exit 2
+    fi
+  else
+    echo -e "You are authenticated with Terminus as:"
+    echo -e " $response"
+    read -p "[y]Continue or [n]login as someone else? [y/n] " login;
+    case $login in
+      [Yy]* ) ;;
+      [Nn]* ) terminus auth:logout;
         terminus auth:login;;
-		esac
-	fi
+    esac
+  fi
 }
 
 ###
@@ -66,20 +66,20 @@ set_framework() {
 # @global $MDENV
 ###
 multidev_create() {
-	echo "Updating ${FRAMEWORK} site ${SITENAME}."
-	MDENV='sec'`date "+%Y%m%d"`
+  echo "Updating ${FRAMEWORK} site ${SITENAME}."
+  MDENV='sec'`date "+%Y%m%d"`
 
   terminus -q env:info ${SITENAME}.${MDENV}
-	if [ $? != 0 ]; then
-		echo -e "Creating multidev enironment $MDENV"
-		read -p "Use the db/files from which environment (probably live)? (dev/test/live) "	FROMENV
-		echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait..."
-		terminus multidev:create ${SITENAME}.${FROMENV} ${MDENV}
-		if [ $? != 0 ]; then
-			>&2 echo -e "error in creating env."
+  if [ $? != 0 ]; then
+    echo -e "Creating multidev enironment $MDENV"
+    read -p "Use the db/files from which environment (probably live)? (dev/test/live) "  FROMENV
+    echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait..."
+    terminus multidev:create ${SITENAME}.${FROMENV} ${MDENV}
+    if [ $? != 0 ]; then
+      >&2 echo -e "error in creating env."
       exit 5;
-		fi
-	else
+    fi
+  else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
     # @todo Add an option for assuming that the update is already complete on the multidev, and just deploy.
     read -p "Copy  db from which environment (probably none)? (dev/test/live/none/abort) " FROMENV
@@ -94,7 +94,7 @@ multidev_create() {
         fi
         ;;
     esac
-	fi
+  fi
 }
 
 ##
@@ -104,11 +104,11 @@ multidev_create() {
 #   Either "sftp" or "git"
 ##
 multidev_connection_mode() {
-	echo -e "Switching to $1 connection-mode..."
-	terminus -q connection:set ${SITENAME}.${MDENV} $1
-	if [ $? = 1 ]; then
+  echo -e "Switching to $1 connection-mode..."
+  terminus -q connection:set ${SITENAME}.${MDENV} $1
+  if [ $? = 1 ]; then
     cleanup_on_error "error in switching to $1" 7
-	fi
+  fi
 }
 
 ##
@@ -180,10 +180,10 @@ drupal_update() {
 
   # @todo Needs to understand modules ignored by update-advanced.
   # @todo for drush > 5 we should first run update-status, then ask the user which module to update, iterate until they choose to stop.
-	terminus -q drush ${SITENAME}.${MDENV} -- pm-update --security-only --no-core=1 --check-updatedb=0 --no-backup
-	if [ $? != 0 ]; then
+  terminus -q drush ${SITENAME}.${MDENV} -- pm-update --security-only --no-core=1 --check-updatedb=0 --no-backup
+  if [ $? != 0 ]; then
     cleanup_on_error "error updating the code to the latest version." 9
-	fi
+  fi
 
   echo "Running 'drush updb'..."
   terminus -q drush ${SITENAME}.${MDENV} -- updatedb -y
@@ -238,7 +238,7 @@ cleanup_on_error() {
 # Delete the multi-dev.
 ##
 delete_multidev() {
-	echo -e "The URL for the multidev environment is:"
+  echo -e "The URL for the multidev environment is:"
   echo -e "  $SITE_URL"
   echo -e "Delete multidev $MDENV? (If you leave it you will be able to run the script again using it.)"
   read -p "[y]es [n]o? [y/n] " cleanup;

@@ -66,10 +66,16 @@ set_framework() {
 # @global $MDENV
 ###
 multidev_create() {
-  echo "Updating ${FRAMEWORK} site ${SITENAME}."
+  echo -e "Updating ${FRAMEWORK} site ${SITENAME}."
   MDENV='sec'`date "+%Y%m%d"`
 
   read -p "What should the multidev be called (recommended: $MDENV)? "  MDENV
+
+  # @todo Make this happen.  We'll also need to determine the framework.
+  #echo -e "Pro tip:"
+  #echo -e "To get to this point directly, just use arguments."
+  #echo -e "  ./pantheon-update.sh ${SITENAME} ${MDENV}"
+  #echo -e ""
 
   terminus -q env:info ${SITENAME}.${MDENV}
   if [ $? != 0 ]; then
@@ -83,7 +89,6 @@ multidev_create() {
     fi
   else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
-    # @todo Add an option for assuming that the update is already complete on the multidev, and just deploy.
     read -p "Copy db from which environment (probably none)? (dev/test/live/none/quit) " FROMENV
     case $FROMENV in
       quit) exit 0;;
@@ -130,6 +135,8 @@ multidev_update() {
     drupal)
       drupal_set_drush_version
       drupal_check_features
+      # @todo add an option to skip security updates.  i.e. Just regenerate the
+      # features, and deploy
       drupal_update
       drupal_regenerate_features
       ;;
@@ -275,8 +282,6 @@ drupal_update_module() {
   echo -e "* Check site functionality related to these module."
   echo -e "* Check for custom code that integrates with the updated module."
   echo -e "* Check for any patches for the module in sites/all/hacks."
-  # @todo Add a step for this.
-  echo -e "* Run \`terminus drush ${SITENAME}.${MDENV} -- features-diff\` to see if any features need to be rebuilt."
   echo -e ""
   echo -e "Continue with the process (committing the code)?"
   read -p "[y]es [n]o, I'll re-run the script later. [y/n] " continue;

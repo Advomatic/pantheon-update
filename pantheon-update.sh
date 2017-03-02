@@ -69,6 +69,8 @@ multidev_create() {
   echo "Updating ${FRAMEWORK} site ${SITENAME}."
   MDENV='sec'`date "+%Y%m%d"`
 
+  read -p "What should the multidev be called (recommended: $MDENV)? "  MDENV
+
   terminus -q env:info ${SITENAME}.${MDENV}
   if [ $? != 0 ]; then
     echo -e "Creating multidev enironment $MDENV"
@@ -295,8 +297,62 @@ multidev_commit() {
   fi
 }
 
+##
+# Check if features need to be regenerated.
+##
 drupal_regenerate_features() {
+  if [ "$HAS_FEATURES" == 0 ]; then
+    return;
+  fi
+  echo -e "Clearing caches."
+  terminus -q drush ${SITENAME}.${MDENV} -- cache-clear all
+  echo -e "Checking if features need to be regenerated."
+  overridden=`terminus drush ${SITENAME}.${MDENV} features-list 2>/dev/null | fgrep Overridden`
+  if [ "$overridden" != "" ]; then
+    echo -e "Regenerating these features:"
+    echo -e "$overridden"
+    terminus -q drush ${SITENAME}.${MDENV} -- features-update-all -y
+    if [ $? != 0 ]; then
+      cleanup_on_error "Error regenerating features." 12
+    fi
+    multidev_commit
+  fi
+}
 
+##
+# Merge the multi-dev to the dev site.
+##
+multidev_merge() {
+  echo -e ""
+  echo -e "Do you wish to merge this multidev into the dev environment?"
+  echo -e "some common cases where you shouldn't:"
+  echo -e "* If the client should review."
+  echo -e "* If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch."
+  # @todo check for this.
+  echo -e "* If there is undeployed code on dev (in the future, could be added to the automation)."
+  # @todo check for this.
+  echo -e "* If the dev environment is in sftp mode (in the future, could be added to the automation)."
+  read -p "Merge?  [y]es [n]o? [y/n] " merge;
+  case $merge in
+    [Yy]* )
+      # @todo Offer to pull in the live DB.
+      echo -e "Merging ${SITENAME}.${MDENV} to dev."
+      terminus multidev:merge-to-dev ${SITENAME}.${MDENV}
+      if [ $? != 0 ]; then
+        cleanup_on_error "Error merging to dev." 13
+      fi
+      echo -e "Clearing caches."
+      terminus -q drush ${SITENAME}.dev -- cache-clear-all
+      echo -e "Updating the database."
+      terminus -q drush ${SITENAME}.dev -- updatedb -y
+      echo -e "Reverting Features."
+      terminus -q drush ${SITENAME}.dev -- features-revert-all -y
+      ;;
+    [Nn]* )
+      echo -e "You may run this script again when you are ready to merge and deploy."
+      exit 0;
+      ;;
+  esac
 }
 
 ##
@@ -310,25 +366,39 @@ cleanup_on_error() {
   >&2 echo -e "ERROR:"
   >&2 echo -e "$1"
   >&2 echo -e ""
-  delete_multidev
+  multidev_delete
   exit "$2";
 }
 
 ##
 # Delete the multi-dev.
+#
+# @param int $skip_continue_message
+#  Set to 1 to skip the message about running the script again with the multidev.
 ##
-delete_multidev() {
-  echo -e "The URL for the multidev environment is:"
-  echo -e "  $MULTIDEV_URL"
-  echo -e "Delete multidev $MDENV? (If you leave it you will be able to run the script again using it.)"
+multidev_delete() {
+  if [ $1 != 1 ]; then
+    echo -e "The URL for the multidev environment is:"
+    echo -e "  $MULTIDEV_URL"
+    echo -e "Delete multidev $MDENV?"
+    echo -e "(If you leave it you will be able to run the script again using it.)"
+  else
+    echo -e "Delete multidev $MDENV?"
+  fi
   read -p "[y]es [n]o? [y/n] " cleanup;
   case $cleanup in
     [Yy]* )
-      read -p "Delete the branch too? [y]es [n]o? [y/n] " delete_branch;
-      case $delete_branch in
-        [Yy]* ) terminus multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
-        [Nn]* ) terminus multidev:delete ${SITENAME}.${MDENV} ;;
-      esac
+      if [ $1 != 1 ]; then
+        read -p "Delete the branch too? [y]es [n]o? [y/n] " delete_branch;
+        case $delete_branch in
+          [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
+          [Nn]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} ;;
+        esac
+      else
+        # Assume that we're skipping continue messages because the merge was
+        # successful.  So don't even offer to delete the branch.
+        terminus -q multidev:delete ${SITENAME}.${MDENV}
+      fi
       ;;
     [Nn]* ) ;;
   esac
@@ -347,18 +417,15 @@ multidev_connection_mode sftp
 multidev_update
 #DRUSH_VERSION=7
 multidev_connection_mode git
-cleanup_on_error "Sorry, the merging and deploying part hasn't been written yet. Use the Pantheon dashboard." 0
+multidev_merge
+multidev_delete 1
+cleanup_on_error "Sorry, the deploying and backup part hasn't been written yet. Use the Pantheon dashboard. But also run \`drush cc all\`, \`drush updb\`, and \`drush fra\`" 0
 
 # @todo
-# Asks you whether you want to deploy, or abort. It should give some pointers of some common cases where you should abort:
-#
-#     If the client should client review.
-#     If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch.
-#     If there is undeployed code on dev (in the future, could be added to the automation)
-#
-# If you choose to continue, It commits the updates in Git and merges into master. If an error, bail.
-# Delete the multi-dev env.
 # Deploy to the test env. (copying DB/Files from live)
 # Pause again and ask to continue.
 # A full backup of production database and files
 # Deploy to live.
+# Show the status report
+#
+# @todo Allow pressing the enter key on most prompts to get a sane default.

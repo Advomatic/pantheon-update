@@ -82,9 +82,9 @@ multidev_create() {
   else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
     # @todo Add an option for assuming that the update is already complete on the multidev, and just deploy.
-    read -p "Copy  db from which environment (probably none)? (dev/test/live/none/abort) " FROMENV
+    read -p "Copy db from which environment (probably none)? (dev/test/live/none/quit) " FROMENV
     case $FROMENV in
-      abort) exit 0;;
+      quit) exit 0;;
       none) ;;
       *)
         echo -e "Copying DB from ${SITENAME}.${FROMENV} to ${MDENV}.  Please wait..."
@@ -114,10 +114,10 @@ multidev_connection_mode() {
 ##
 # Set the site URL.
 #
-# @global $SITE_URL
+# @global $MULTIDEV_URL
 ##
-set_site_url() {
-  SITE_URL="http://${MDENV}-${SITENAME}.pantheonsite.io/"
+set_multidev_url() {
+  MULTIDEV_URL="http://${MDENV}-${SITENAME}.pantheonsite.io/"
 }
 
 ###
@@ -129,12 +129,13 @@ multidev_update() {
       drupal_set_drush_version
       drupal_check_features
       drupal_update
+      drupal_regenerate_features
       ;;
     *)
       # wordpress and drupal8
       # @link https://github.com/pixotech/Pantheon-Updates/blob/master/pantheon-update.sh#L38
       echo -e "$FRAMEWORK is not yet supported.  Do whatever it is that you do to run security updates on the multi-site, then continue."
-      echo -e "  $SITE_URL"
+      echo -e "  $MULTIDEV_URL"
       read -p "Continue [y/n] " continue;
       case $continue in
         [Yy]* ) ;;
@@ -160,13 +161,42 @@ drupal_set_drush_version() {
 
 ###
 # Check that features are not overridden.
+#
+# @global $HAS_FEATURES
 ###
 drupal_check_features() {
+  echo -e "Checking if Features installed."
+  drupal_check_if_module_installed features
+  if [ $? == 0 ]; then
+    HAS_FEATURES=0
+    return;
+  fi
+  HAS_FEATURES=1
   echo -e "Checking that features are not overridden."
   overridden=`terminus drush ${SITENAME}.${MDENV} features-list 2>/dev/null | fgrep Overridden`
   if [ "$overridden" != "" ]; then
     echo -e "$overridden"
-    cleanup_on_error "There are features overrides.  These should be cleaned up first with \`terminus drush ${SITENAME}.${MDENV} features-list\`." 8
+    cleanup_on_error "There are features overrides.  These should be cleaned up first." 8
+  fi
+}
+
+##
+# List all modules that need a security update.
+##
+drupal_update_list_modules_needing_update() {
+  echo -e "Checking which modules need an update."
+  terminus -q drush ${SITENAME}.${MDENV} pm-updatestatus -- --security-only
+}
+
+##
+# Check if the given module is installed.
+#
+# @param string $module_name
+##
+drupal_check_if_module_installed() {
+  installed=`terminus drush ${SITENAME}.${MDENV} pm-list -- --status=enabled --pipe 2>/dev/null | fgrep $1`
+  if [ "$installed" != "" ]; then
+    return 1;
   fi
 }
 
@@ -175,51 +205,98 @@ drupal_check_features() {
 ###
 drupal_update() {
 
-  echo -e "Updating the code with drush."
-  terminus -q drush ${SITENAME}.${MDENV} -- rf -q
+  echo -e "Checking Update Status Advanced."
+  drupal_check_if_module_installed update_status_advanced
+  if [ $? == 1 ]; then
+    # @todo Either rectify this, or switch to drush locks.
+    echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
+    echo -e "Be sure to check this URL rather than relying on the report below.:"
+    echo -e "  ${MULTIDEV_URL}admin/reports/updates/settings"
+  fi
 
-  # @todo Needs to understand modules ignored by update-advanced.
-  # @todo for drush > 5 we should first run update-status, then ask the user which module to update, iterate until they choose to stop.
-  terminus -q drush ${SITENAME}.${MDENV} -- pm-update --security-only --no-core=1 --check-updatedb=0 --no-backup
+  terminus -q drush ${SITENAME}.${MDENV} -- rf -q
+  drupal_update_list_modules_needing_update
+  echo -e ""
+  echo -e "Remember that our security update policy does not include:"
+  echo -e "* Jumps to a new major version."
+  echo -e "  e.g. 7.x-2.4 to 7.x-3.0"
+  echo -e "* Upgrading an alpha module."
+  echo -e "  e.g. 7.x-1.0-alpha3 to 7.x-1.0-beta2"
+  echo -e "These should be done as billable work."
+
+  while true; do
+    echo -e ""
+    echo -e "Enter one of the following:"
+    echo -e "* The machine-name of a module to update."
+    echo -e "* 'list' to show the list again."
+    echo -e "* 'none' to move on to the next step."
+    read -p "? " command;
+    case $command in
+      none) break ;;
+      list) drupal_update_list_modules_needing_update ;;
+      *)
+        drupal_update_module $command
+        multidev_commit
+        ;;
+    esac
+  done;
+}
+
+##
+# Update the given module to the latest stable version.
+#
+# @param string $module_name
+##
+drupal_update_module() {
+  drupal_check_if_module_installed $1
+  if [ $? == 0 ]; then
+    echo "Module $1 does not exist."
+    return;
+  fi
+
+  echo "Updating the code for $1..."
+  terminus -q drush ${SITENAME}.${MDENV} -- pm-updatecode --no-backup $1 -y
   if [ $? != 0 ]; then
     cleanup_on_error "error updating the code to the latest version." 9
   fi
 
-  echo "Running 'drush updb'..."
+  echo "Updating the database for $1..."
   terminus -q drush ${SITENAME}.${MDENV} -- updatedb -y
   if [ $? != 0 ]; then
     cleanup_on_error "error updating the database." 10
   fi
 
-  echo -e "Site's modules have been updated. Please test it here:"
-  echo -e "  $SITE_URL"
+  echo -e "$1 has been updated. Please test it here:"
+  echo -e "  $MULTIDEV_URL"
   echo -e ""
   echo -e "Some things you might need to check:"
-  echo -e "* Check site functionality related to these module(s)."
-  echo -e "* Check for custom code that integrates with the updated module(s)."
-  echo -e "* Check for any patches for the module(s) in sites/all/hacks."
+  echo -e "* Check site functionality related to these module."
+  echo -e "* Check for custom code that integrates with the updated module."
+  echo -e "* Check for any patches for the module in sites/all/hacks."
   # @todo Add a step for this.
   echo -e "* Run \`terminus drush ${SITENAME}.${MDENV} -- features-diff\` to see if any features need to be rebuilt."
   echo -e ""
-  echo -e "Continue with the process?"
+  echo -e "Continue with the process (committing the code)?"
   read -p "[y]es [n]o, I'll re-run the script later. [y/n] " continue;
   case $continue in
     [Yy]* ) ;;
     [Nn]* ) exit 0 ;;
   esac
-
-  multidev_commit
 }
 
 ##
 # Commit code in the multi-dev.
 ##
 multidev_commit() {
-  read -p "Please provide git commit message: " message
-  terminus env:commit ${SITENAME}.${MDENV} --message="$message"
+  read -p "Please provide git commit message (e.g. Security update for X module.): " message
+  terminus -q env:commit ${SITENAME}.${MDENV} --message="$message"
   if [ $? != 0 ]; then
     cleanup_on_error "Error committing to git." 11
   fi
+}
+
+drupal_regenerate_features() {
+
 }
 
 ##
@@ -229,7 +306,10 @@ multidev_commit() {
 # @param int $return_code
 ##
 cleanup_on_error() {
+  >&2 echo -e ""
+  >&2 echo -e "ERROR:"
   >&2 echo -e "$1"
+  >&2 echo -e ""
   delete_multidev
   exit "$2";
 }
@@ -239,16 +319,17 @@ cleanup_on_error() {
 ##
 delete_multidev() {
   echo -e "The URL for the multidev environment is:"
-  echo -e "  $SITE_URL"
+  echo -e "  $MULTIDEV_URL"
   echo -e "Delete multidev $MDENV? (If you leave it you will be able to run the script again using it.)"
   read -p "[y]es [n]o? [y/n] " cleanup;
   case $cleanup in
-    [Yy]* ) 
+    [Yy]* )
       read -p "Delete the branch too? [y]es [n]o? [y/n] " delete_branch;
       case $delete_branch in
         [Yy]* ) terminus multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
         [Nn]* ) terminus multidev:delete ${SITENAME}.${MDENV} ;;
       esac
+      ;;
     [Nn]* ) ;;
   esac
 }
@@ -261,12 +342,12 @@ set_framework
 #FRAMEWORK=drupal
 multidev_create
 #MDENV=sec20170301
-set_site_url
+set_multidev_url
 multidev_connection_mode sftp
 multidev_update
-#DRUSH_VERSION=5
+#DRUSH_VERSION=7
 multidev_connection_mode git
-cleanup_on_error "Sorry, the rest hasn't been written yet." 0
+cleanup_on_error "Sorry, the merging and deploying part hasn't been written yet. Use the Pantheon dashboard." 0
 
 # @todo
 # Asks you whether you want to deploy, or abort. It should give some pointers of some common cases where you should abort:

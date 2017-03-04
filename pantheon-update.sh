@@ -215,7 +215,7 @@ drupal_check_if_module_installed() {
 drupal_update() {
 
   echo -e "Checking Update Status Advanced."
-  drupal_check_if_module_installed update_status_advanced
+  drupal_check_if_module_installed update_advanced
   if [ $? == 1 ]; then
     # @todo Either rectify this, or switch to drush locks.
     echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
@@ -340,14 +340,14 @@ multidev_merge() {
   read -p "Merge?  [y]es [n]o? [y/n] " merge;
   case $merge in
     [Yy]* )
-      # @todo Offer to pull in the live DB.
+      # @todo abstract this part so that it can be run on any env.
       echo -e "Merging ${SITENAME}.${MDENV} to dev."
       terminus multidev:merge-to-dev ${SITENAME}.${MDENV}
       if [ $? != 0 ]; then
         cleanup_on_error "Error merging to dev." 13
       fi
       echo -e "Clearing caches."
-      terminus -q drush ${SITENAME}.dev -- cache-clear-all
+      terminus -q drush ${SITENAME}.dev -- cache-clear all
       echo -e "Updating the database."
       terminus -q drush ${SITENAME}.dev -- updatedb -y
       echo -e "Reverting Features."
@@ -382,7 +382,7 @@ cleanup_on_error() {
 #  Set to 1 to skip the message about running the script again with the multidev.
 ##
 multidev_delete() {
-  if [ $1 != 1 ]; then
+  if [ "$1" != 1 ]; then
     echo -e "The URL for the multidev environment is:"
     echo -e "  $MULTIDEV_URL"
     echo -e "Delete multidev $MDENV?"
@@ -393,7 +393,7 @@ multidev_delete() {
   read -p "[y]es [n]o? [y/n] " cleanup;
   case $cleanup in
     [Yy]* )
-      if [ $1 != 1 ]; then
+      if [ "$1" != 1 ]; then
         read -p "Delete the branch too? [y]es [n]o? [y/n] " delete_branch;
         case $delete_branch in
           [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
@@ -434,3 +434,4 @@ cleanup_on_error "Sorry, the deploying and backup part hasn't been written yet. 
 # Show the status report
 #
 # @todo Allow pressing the enter key on most prompts to get a sane default.
+# @todo Ring a bell after long processes finish.

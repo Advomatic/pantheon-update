@@ -69,7 +69,8 @@ multidev_create() {
   echo -e "Updating ${FRAMEWORK} site ${SITENAME}."
   MDENV='sec'`date "+%Y%m%d"`
 
-  read -p "What should the multidev be called (recommended: $MDENV)? "  MDENV
+  read -p "What should the multidev be called. You may use the name of an existing branch. (recommended: $MDENV)? "  MDENV
+  # @todo error check that it's not empty.
 
   # @todo Make this happen.  We'll also need to determine the framework.
   #echo -e "Pro tip:"
@@ -81,8 +82,9 @@ multidev_create() {
   if [ $? != 0 ]; then
     echo -e "Creating multidev enironment $MDENV"
     read -p "Use the db/files from which environment (probably live)? (dev/test/live) "  FROMENV
+    # @todo error check that it's not empty.
     echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait..."
-    terminus multidev:create ${SITENAME}.${FROMENV} ${MDENV}
+    terminus -q multidev:create ${SITENAME}.${FROMENV} ${MDENV}
     if [ $? != 0 ]; then
       >&2 echo -e "error in creating env."
       exit 5;
@@ -90,6 +92,7 @@ multidev_create() {
   else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
     read -p "Copy db from which environment (probably none)? (dev/test/live/none/quit) " FROMENV
+    # @todo error check that it's not empty.
     case $FROMENV in
       quit) exit 0;;
       none) ;;
@@ -218,6 +221,7 @@ drupal_update() {
   drupal_check_if_module_installed update_advanced
   if [ $? == 1 ]; then
     # @todo Either rectify this, or switch to drush locks.
+    echo -e ""
     echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
     echo -e "Be sure to check this URL rather than relying on the report below.:"
     echo -e "  ${MULTIDEV_URL}admin/reports/updates/settings"
@@ -335,14 +339,12 @@ multidev_merge() {
   echo -e "* If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch."
   # @todo check for this.
   echo -e "* If there is undeployed code on dev (in the future, could be added to the automation)."
-  # @todo check for this.
-  echo -e "* If the dev environment is in sftp mode (in the future, could be added to the automation)."
   read -p "Merge?  [y]es [n]o? [y/n] " merge;
   case $merge in
     [Yy]* )
-      # @todo abstract this part so that it can be run on any env.
+      # @todo abstract this part so that it can be run on any env., with any framework.
       echo -e "Merging ${SITENAME}.${MDENV} to dev."
-      terminus multidev:merge-to-dev ${SITENAME}.${MDENV}
+      terminus -q multidev:merge-to-dev ${SITENAME}.${MDENV}
       if [ $? != 0 ]; then
         cleanup_on_error "Error merging to dev." 13
       fi
@@ -424,7 +426,9 @@ multidev_update
 multidev_connection_mode git
 multidev_merge
 multidev_delete 1
-cleanup_on_error "Sorry, the deploying and backup part hasn't been written yet. Use the Pantheon dashboard. But also run \`drush cc all\`, \`drush updb\`, and \`drush fra\`" 0
+echo -e "Sorry, the deploying and backup part hasn't been written yet. Use the Pantheon dashboard. But also run \`drush cc all\`, \`drush updb\`, and \`drush fra\`"
+echo -e
+echo -e "Thanks.  All done."
 
 # @todo
 # Deploy to the test env. (copying DB/Files from live)

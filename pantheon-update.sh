@@ -233,10 +233,15 @@ drupal_update() {
   echo -e "Remember that our security update policy does not include:"
   echo -e "* Jumps to a new major version."
   echo -e "  e.g. 7.x-2.4 to 7.x-3.0"
-  echo -e "* Upgrading an alpha module."
+  echo -e "* Upgrading an alpha or dev module."
   echo -e "  e.g. 7.x-1.0-alpha3 to 7.x-1.0-beta2"
   echo -e "These should be done as billable work."
 
+  # @todo It would require less interaction if we did this a bit differently:
+  #       1. Build a list of all the modules that we want to update.
+  #       2. Update them one by one.  After each we ask for a commit message, as
+  #          long as the user doesn't see any error messages.
+  #       3. Ask the user to test the site.
   while true; do
     echo -e ""
     echo -e "Enter one of the following:"

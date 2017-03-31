@@ -167,7 +167,7 @@ drupal_set_drush_version() {
   echo -e "You may be asked if you wish to continue connecting.  Say yes."
   DRUSH_VERSION=`terminus drush ${SITENAME}.${MDENV} -- --version --pipe 2>/dev/null | cut -c-1`
   if [ "$DRUSH_VERSION" -lt 6 ]; then
-    cleanup_on_error "The site needs to run at least drush version 6 (7 preferred).  See https://pantheon.io/docs/drush-versions/" 12
+    cleanup_on_error "The site needs to run Drush 7 for Drupal 7, Drush 8 for Drupal 8.  See https://pantheon.io/docs/drush-versions/" 12
   fi
 }
 

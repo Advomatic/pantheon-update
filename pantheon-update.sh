@@ -258,8 +258,10 @@ drupal_update() {
       none) break ;;
       list) drupal_update_list_modules_needing_update ;;
       *)
-        drupal_update_module $command
-        multidev_commit
+        if [ "$command" != "" ]; then
+          drupal_update_module $command
+          multidev_commit
+        fi
         ;;
     esac
   done;

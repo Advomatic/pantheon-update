@@ -70,7 +70,10 @@ multidev_create() {
   MDENV='sec'`date "+%Y%m%d"`
 
   read -p "What should the multidev be called. You may use the name of an existing branch. (recommended: $MDENV)? "  MDENV
-  # @todo error check that it's not empty.
+  if [ "$MDENV" == "" ]; then
+    >&2 echo -e "Error: New multidev environment must not be blank."
+    exit 4;
+  fi
 
   # @todo Make this happen.  We'll also need to determine the framework.
   #echo -e "Pro tip:"
@@ -86,7 +89,7 @@ multidev_create() {
     echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait..."
     terminus -q multidev:create ${SITENAME}.${FROMENV} ${MDENV}
     if [ $? != 0 ]; then
-      >&2 echo -e "error in creating env."
+      >&2 echo -e "Error: Could not create environment."
       exit 5;
     fi
   else

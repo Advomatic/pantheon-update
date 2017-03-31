@@ -226,8 +226,10 @@ drupal_update() {
     # @todo Either rectify this, or switch to drush locks.
     echo -e ""
     echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
-    echo -e "Be sure to check this URL rather than relying on the report below.:"
+    echo -e "Be sure to check this URL to see if any of the modules reported below are excluded for some reason:"
     echo -e "  ${MULTIDEV_URL}admin/reports/updates/settings"
+    echo -e "Adjust those rules if necessary (maybe the most recent version needs to be ignored), and disregard the list below.  Instead use the report at:"
+    echo -e "  ${MULTIDEV_URL}admin/reports/updates"
   fi
 
   terminus -q drush ${SITENAME}.${MDENV} -- rf -q
@@ -342,7 +344,7 @@ drupal_regenerate_features() {
 multidev_merge() {
   echo -e ""
   echo -e "Do you wish to merge this multidev into the dev environment?"
-  echo -e "some common cases where you shouldn't:"
+  echo -e "Some common cases where you shouldn't:"
   echo -e "* If the client should review."
   echo -e "* If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch."
   # @todo check for this.
@@ -447,3 +449,4 @@ echo -e "Thanks.  All done."
 #
 # @todo Allow pressing the enter key on most prompts to get a sane default.
 # @todo Ring a bell after long processes finish.
+# @todo Show warnings in yellow, errors in red.

@@ -200,7 +200,7 @@ drupal_check_features() {
 ##
 drupal_update_list_modules_needing_update() {
   echo -e "Checking which modules need an update."
-  terminus -q drush ${SITENAME}.${MDENV} pm-updatestatus -- --security-only
+  terminus drush aftorg.sec20170331 pm-updatestatus -- --security-only 2>&1 | fgrep -v '[notice]'
 }
 
 ##

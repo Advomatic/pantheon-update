@@ -227,9 +227,9 @@ drupal_update() {
     echo -e ""
     echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
     echo -e "Be sure to check this URL to see if any of the modules reported below are excluded for some reason:"
-    echo -e "  ${MULTIDEV_URL}admin/reports/updates/settings"
+    echo -e "  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates/settings"
     echo -e "Adjust those rules if necessary (maybe the most recent version needs to be ignored), and disregard the list below.  Instead use the report at:"
-    echo -e "  ${MULTIDEV_URL}admin/reports/updates"
+    echo -e "  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates"
   fi
 
   terminus -q drush ${SITENAME}.${MDENV} -- rf -q

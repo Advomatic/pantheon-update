@@ -10,7 +10,7 @@ terminus_check() {
   if [ $? == 0 ]; then
     echo -e "Terminus is installed!"
   else
-    >&2  echo -e "Either terminus is not installed, not installed globally, or is < 1.0. Please install Terminus and try again."
+    >&2  echo -e "${INVERSE}Either terminus is not installed, not installed globally, or is < 1.0. Please install Terminus and try again.${NOINVERSE}"
     exit 1
   fi
 }
@@ -26,13 +26,13 @@ terminus_auth() {
     if [ $? == 0 ]; then
       echo -e "Login successful!"
     else
-      echo "Login failed. Please re-run the script and try again."
+      echo "${INVERSE}Login failed. Please re-run the script and try again.${NOINVERSE}"
       exit 2
     fi
   else
     echo -e "You are authenticated with Terminus as:"
     echo -e " $response"
-    read -p "[y]Continue or [n]login as someone else? [y/n] " login;
+    read -p "${UNDERLINE}${BOLD}[y]${NOBOLD}Continue or ${BOLD}[n]${NOBOLD}login as someone else? [y/n]${NOUNDERLINE} " login;
     case $login in
       [Yy]* ) ;;
       [Nn]* ) terminus auth:logout;
@@ -48,7 +48,7 @@ terminus_auth() {
 ###
 choose_site() {
   terminus site:list --fields="name,id,framework"
-  read -p 'Type in site name and press [Enter] to start updating: ' SITENAME
+  read -p "${UNDERLINE}Type in site name and press [Enter] to start updating:${NOUNDERLINE} " SITENAME
 }
 
 ###
@@ -69,9 +69,9 @@ multidev_create() {
   echo -e "Updating ${FRAMEWORK} site ${SITENAME}."
   MDENV='sec'`date "+%Y%m%d"`
 
-  read -p "What should the multidev be called. You may use the name of an existing branch. (recommended: $MDENV)? "  MDENV
+  read -p "${UNDERLINE}What should the multidev be called. You may use the name of an existing branch. (recommended: ${BOLD}${MDENV}${NOBOLD})? ${NOUNDERLINE}"  MDENV
   if [ "$MDENV" == "" ]; then
-    >&2 echo -e "Error: New multidev environment must not be blank."
+    >&2 echo -e "${INVERSE}Error: New multidev environment must not be blank.${NOINVERSE}"
     exit 4;
   fi
 
@@ -84,9 +84,9 @@ multidev_create() {
   terminus -q env:info ${SITENAME}.${MDENV}
   if [ $? != 0 ]; then
     echo -e "Creating multidev enironment $MDENV"
-    read -p "Use the db/files from which environment (probably live)? (dev/test/live) "  FROMENV
+    read -p "${UNDERLINE}Use the db/files from which environment (probably live)? (${BOLD}dev/test/live${NOBOLD}) ${NOUNDERLINE}"  FROMENV
     # @todo error check that it's not empty.
-    echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait..."
+    echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait (this can take a long time)..."
     terminus -q multidev:create ${SITENAME}.${FROMENV} ${MDENV}
     if [ $? != 0 ]; then
       >&2 echo -e "Error: Could not create environment."
@@ -94,13 +94,13 @@ multidev_create() {
     fi
   else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
-    read -p "Copy db from which environment (probably none)? (dev/test/live/none/quit) " FROMENV
+    read -p "${UNDERLINE}Copy db from which environment (probably none)? (${BOLD}dev/test/live/none/quit${NOBOLD})${NOUNDERLINE} " FROMENV
     # @todo error check that it's not empty.
     case $FROMENV in
       quit) exit 0;;
       none) ;;
       *)
-        echo -e "Copying DB from ${SITENAME}.${FROMENV} to ${MDENV}.  Please wait..."
+        echo -e "Copying DB from ${SITENAME}.${FROMENV} to ${MDENV}.  Please wait (this can take a long time)..."
         terminus -y -q env:clone-content ${SITENAME}.${FROMENV} ${MDENV}
         if [ $? != 0 ]; then
           cleanup_on_error "error cloning content from ${FROMENV} to ${MDENV}" 6
@@ -151,7 +151,7 @@ multidev_update() {
       # @link https://github.com/pixotech/Pantheon-Updates/blob/master/pantheon-update.sh#L38
       echo -e "$FRAMEWORK is not yet supported.  Do whatever it is that you do to run security updates on the multi-site, then continue."
       echo -e "  $MULTIDEV_URL"
-      read -p "Continue [y/n] " continue;
+      read -p "${UNDERLINE}Continue [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " continue;
       case $continue in
         [Yy]* ) ;;
         [Nn]* ) cleanup_on_error "" 0 ;;
@@ -167,7 +167,7 @@ multidev_update() {
 ###
 drupal_set_drush_version() {
   echo -e "Determining the drush version."
-  echo -e "You may be asked if you wish to continue connecting.  Say yes."
+  echo -e "${UNDERLINE}You may be asked if you wish to continue connecting.  Say yes.${NOUNDERLINE}"
   DRUSH_VERSION=`terminus drush ${SITENAME}.${MDENV} -- --version --pipe 2>/dev/null | cut -c-1`
   if [ "$DRUSH_VERSION" -lt 6 ]; then
     cleanup_on_error "The site needs to run Drush 7 for Drupal 7, Drush 8 for Drupal 8.  See https://pantheon.io/docs/drush-versions/" 12
@@ -225,17 +225,17 @@ drupal_update() {
   if [ $? == 1 ]; then
     # @todo Either rectify this, or switch to drush locks.
     echo -e ""
-    echo -e "This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
-    echo -e "Be sure to check this URL to see if any of the modules reported below are excluded for some reason:"
-    echo -e "  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates/settings"
-    echo -e "Adjust those rules if necessary (maybe the most recent version needs to be ignored), and disregard the list below.  Instead use the report at:"
-    echo -e "  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates"
+    echo -e "${BOLD}This tool is not yet smart enough to understand modules locked by Update Status Advanced module."
+    echo -e "${BOLD}Be sure to check this URL to see if any of the modules reported below are excluded for some reason:"
+    echo -e "${BOLD}  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates/settings"
+    echo -e "${BOLD}Adjust those rules if necessary (maybe the most recent version needs to be ignored), and disregard the list below.  Instead use the report at:"
+    echo -e "${BOLD}  http://live-${SITENAME}.pantheonsite.io/admin/reports/updates${NOBOLD}"
   fi
 
   terminus -q drush ${SITENAME}.${MDENV} -- rf -q
   drupal_update_list_modules_needing_update
   echo -e ""
-  echo -e "Remember that our security update policy does not include:"
+  echo -e "${BOLD}Remember that our security update policy does not include:${NOBOLD}"
   echo -e "* Jumps to a new major version."
   echo -e "  e.g. 7.x-2.4 to 7.x-3.0"
   echo -e "* Upgrading an alpha or dev module."
@@ -249,10 +249,10 @@ drupal_update() {
   #       3. Ask the user to test the site.
   while true; do
     echo -e ""
-    echo -e "Enter one of the following:"
+    echo -e "${UNDERLINE}Enter one of the following:${NOUNDERLINE}"
     echo -e "* The machine-name of a module to update."
-    echo -e "* 'list' to show the list again."
-    echo -e "* 'none' to move on to the next step."
+    echo -e "* '${BOLD}list${NOBOLD}' to show the list again."
+    echo -e "* '${BOLD}none${NOBOLD}' to move on to the next step."
     read -p "? " command;
     case $command in
       none) break ;;
@@ -275,7 +275,7 @@ drupal_update() {
 drupal_update_module() {
   drupal_check_if_module_installed $1
   if [ $? == 0 ]; then
-    echo "Module $1 does not exist."
+    echo "${INVERSE}Module $1 does not exist.${NOINVERSE}"
     return;
   fi
 
@@ -291,7 +291,7 @@ drupal_update_module() {
     cleanup_on_error "error updating the database." 10
   fi
 
-  echo -e "$1 has been updated. Please test it here:"
+  echo -e "${BOLD}$1 has been updated. Please test it here:${NOBOLD}"
   echo -e "  $MULTIDEV_URL"
   echo -e ""
   echo -e "Some things you might need to check:"
@@ -299,8 +299,8 @@ drupal_update_module() {
   echo -e "* Check for custom code that integrates with the updated module."
   echo -e "* Check for any patches for the module in sites/all/hacks."
   echo -e ""
-  echo -e "Continue with the process (committing the code)?"
-  read -p "[y]es [n]o, I'll re-run the script later. [y/n] " continue;
+  echo -e "${UNDERLINE}Continue with the process (committing the code)?${NOUNDERLINE}"
+  read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]es [${BOLD}n${NOBOLD}]o, I'll re-run the script later. [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " continue;
   case $continue in
     [Yy]* ) ;;
     [Nn]* ) exit 0 ;;
@@ -311,7 +311,7 @@ drupal_update_module() {
 # Commit code in the multi-dev.
 ##
 multidev_commit() {
-  read -p "Please provide git commit message (e.g. Security update for X module.): " message
+  read -p "${UNDERLINE}Please provide git commit message (e.g. ${BOLD}Security update for X module.${NOBOLD}):${NOUNDERLINE} " message
   terminus -q env:commit ${SITENAME}.${MDENV} --message="$message"
   if [ $? != 0 ]; then
     cleanup_on_error "Error committing to git." 11
@@ -345,13 +345,13 @@ drupal_regenerate_features() {
 ##
 multidev_merge() {
   echo -e ""
-  echo -e "Do you wish to merge this multidev into the dev environment?"
+  echo -e "${UNDERLINE}Do you wish to merge this multidev into the dev environment?${NOUNDERLINE}"
   echo -e "Some common cases where you shouldn't:"
   echo -e "* If the client should review."
   echo -e "* If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch."
   # @todo check for this.
   echo -e "* If there is undeployed code on dev (in the future, could be added to the automation)."
-  read -p "Merge?  [y]es [n]o? [y/n] " merge;
+  read -p "${UNDERLINE}Merge?  [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " merge;
   case $merge in
     [Yy]* )
       # @todo abstract this part so that it can be run on any env., with any framework.
@@ -382,8 +382,8 @@ multidev_merge() {
 ##
 cleanup_on_error() {
   >&2 echo -e ""
-  >&2 echo -e "ERROR:"
-  >&2 echo -e "$1"
+  >&2 echo -e "${INVERSE}ERROR:"
+  >&2 echo -e "$1${NOINVERSE}"
   >&2 echo -e ""
   multidev_delete
   exit "$2";
@@ -399,16 +399,16 @@ multidev_delete() {
   if [ "$1" != 1 ]; then
     echo -e "The URL for the multidev environment is:"
     echo -e "  $MULTIDEV_URL"
-    echo -e "Delete multidev $MDENV?"
+    echo -e "${UNDERLINE}Delete multidev $MDENV?${NOUNDERLINE}"
     echo -e "(If you leave it you will be able to run the script again using it.)"
   else
-    echo -e "Delete multidev $MDENV?"
+    echo -e "${UNDERLINE}Delete multidev $MDENV?${NOUNDERLINE}"
   fi
   read -p "[y]es [n]o? [y/n] " cleanup;
   case $cleanup in
     [Yy]* )
       if [ "$1" != 1 ]; then
-        read -p "Delete the branch too? [y]es [n]o? [y/n] " delete_branch;
+        read -p "${UNDERLINE}Delete the branch too? [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " delete_branch;
         case $delete_branch in
           [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
           [Nn]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} ;;
@@ -422,6 +422,16 @@ multidev_delete() {
     [Nn]* ) ;;
   esac
 }
+
+# Used for questions and warnings.
+UNDERLINE=$'\033[4m'
+NOUNDERLINE=$'\033[24m'
+# Used for options.
+BOLD=$'\033[1m'
+NOBOLD=$'\033[22m'
+# Used for errors.
+INVERSE=$'\033[7'
+NOINVERSE=$'\033[27m'
 
 terminus_check
 terminus_auth
@@ -438,7 +448,7 @@ multidev_update
 multidev_connection_mode git
 multidev_merge
 multidev_delete 1
-echo -e "Sorry, the deploying and backup part hasn't been written yet. Use the Pantheon dashboard. But also run \`drush cc all\`, \`drush updb\`, and \`drush fra\`"
+echo -e "${UNDERLINE}Sorry, the deploying and backup part hasn't been written yet. Use the Pantheon dashboard. But also run \`drush cc all\`, \`drush updb\`, and \`drush fra\`${NOUNDERLINE}"
 echo -e
 echo -e "Thanks.  All done."
 
@@ -451,4 +461,3 @@ echo -e "Thanks.  All done."
 #
 # @todo Allow pressing the enter key on most prompts to get a sane default.
 # @todo Ring a bell after long processes finish.
-# @todo Show warnings in yellow, errors in red.

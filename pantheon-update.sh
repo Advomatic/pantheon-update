@@ -32,10 +32,10 @@ terminus_auth() {
   else
     echo -e "You are authenticated with Terminus as:"
     echo -e " $response"
-    read -p "${UNDERLINE}${BOLD}[y]${NOBOLD}Continue or ${BOLD}[n]${NOBOLD}login as someone else? [y/n]${NOUNDERLINE} " login;
+    read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]Continue or [n]login as someone else? [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " login;
     case $login in
       [Yy]* ) ;;
-      [Nn]* ) terminus auth:logout;
+      [Nn] ) terminus auth:logout;
         terminus auth:login;;
     esac
   fi
@@ -67,13 +67,9 @@ set_framework() {
 ###
 multidev_create() {
   echo -e "Updating ${FRAMEWORK} site ${SITENAME}."
-  MDENV='sec'`date "+%Y%m%d"`
-
-  read -p "${UNDERLINE}What should the multidev be called. You may use the name of an existing branch. (recommended: ${BOLD}${MDENV}${NOBOLD})? ${NOUNDERLINE}"  MDENV
-  if [ "$MDENV" == "" ]; then
-    >&2 echo -e "${INVERSE}Error: New multidev environment must not be blank.${NOINVERSE}"
-    exit 4;
-  fi
+  MDENV_DEFAULT='sec'`date "+%Y%m%d"`
+  read -p "${UNDERLINE}What should the multidev be called. You may use the name of an existing branch. [${BOLD}${MDENV_DEFAULT}${NOBOLD}]? ${NOUNDERLINE}"  MDENV
+  MDENV="${MDENV:-$MDENV_DEFAULT}"
 
   # @todo Make this happen.  We'll also need to determine the framework.
   #echo -e "Pro tip:"
@@ -84,8 +80,9 @@ multidev_create() {
   terminus -q env:info ${SITENAME}.${MDENV}
   if [ $? != 0 ]; then
     echo -e "Creating multidev enironment $MDENV"
-    read -p "${UNDERLINE}Use the db/files from which environment (probably live)? (${BOLD}dev/test/live${NOBOLD}) ${NOUNDERLINE}"  FROMENV
-    # @todo error check that it's not empty.
+    FROMENV_DEFAULT='live'
+    read -p "${UNDERLINE}Use the db/files from which environment? (dev/test/${BOLD}live${NOBOLD}) ${NOUNDERLINE}"  FROMENV
+    FROMENV="${FROMENV:-$FROMENV_DEFAULT}"
     echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait (this can take a long time)..."
     terminus -q multidev:create ${SITENAME}.${FROMENV} ${MDENV}
     if [ $? != 0 ]; then
@@ -94,7 +91,9 @@ multidev_create() {
     fi
   else
     echo -e "Multidev environment $MDENV already exists and will be used for the rest of the update."
-    read -p "${UNDERLINE}Copy db from which environment (probably none)? (${BOLD}dev/test/live/none/quit${NOBOLD})${NOUNDERLINE} " FROMENV
+    FROMENV_DEFAULT='none'
+    read -p "${UNDERLINE}Copy db from which environment? (dev/test/live/${BOLD}none${NOBOLD}/quit)${NOUNDERLINE} " FROMENV
+    FROMENV="${FROMENV:-$FROMENV_DEFAULT}"
     # @todo error check that it's not empty.
     case $FROMENV in
       quit) exit 0;;
@@ -151,10 +150,10 @@ multidev_update() {
       # @link https://github.com/pixotech/Pantheon-Updates/blob/master/pantheon-update.sh#L38
       echo -e "$FRAMEWORK is not yet supported.  Do whatever it is that you do to run security updates on the multi-site, then continue."
       echo -e "  $MULTIDEV_URL"
-      read -p "${UNDERLINE}Continue [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " continue;
+      read -p "${UNDERLINE}Continue [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " continue;
       case $continue in
         [Yy]* ) ;;
-        [Nn]* ) cleanup_on_error "" 0 ;;
+        [Nn] ) cleanup_on_error "" 0 ;;
       esac
       ;;
   esac
@@ -180,7 +179,7 @@ drupal_set_drush_version() {
 # @global $HAS_FEATURES
 ###
 drupal_check_features() {
-  echo -e "Checking if Features installed."
+  echo -e "Checking if Features module is installed."
   drupal_check_if_module_installed features
   if [ $? == 0 ]; then
     HAS_FEATURES=0
@@ -251,8 +250,8 @@ drupal_update() {
     echo -e ""
     echo -e "${UNDERLINE}Enter one of the following:${NOUNDERLINE}"
     echo -e "* The machine-name of a module to update."
-    echo -e "* '${BOLD}list${NOBOLD}' to show the list again."
-    echo -e "* '${BOLD}none${NOBOLD}' to move on to the next step."
+    echo -e "* 'list' to show the list again."
+    echo -e "* 'none' to move on to the next step."
     read -p "? " command;
     case $command in
       none) break ;;
@@ -260,7 +259,7 @@ drupal_update() {
       *)
         if [ "$command" != "" ]; then
           drupal_update_module $command
-          multidev_commit
+          multidev_commit "Security update for $command module."
         fi
         ;;
     esac
@@ -300,7 +299,7 @@ drupal_update_module() {
   echo -e "* Check for any patches for the module in sites/all/hacks."
   echo -e ""
   echo -e "${UNDERLINE}Continue with the process (committing the code)?${NOUNDERLINE}"
-  read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]es [${BOLD}n${NOBOLD}]o, I'll re-run the script later. [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " continue;
+  read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]es [n]o, I'll re-run the script later. [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " continue;
   case $continue in
     [Yy]* ) ;;
     [Nn]* ) exit 0 ;;
@@ -309,9 +308,12 @@ drupal_update_module() {
 
 ##
 # Commit code in the multi-dev.
+#
+# @param string $default_commit_message
 ##
 multidev_commit() {
-  read -p "${UNDERLINE}Please provide git commit message (e.g. ${BOLD}Security update for X module.${NOBOLD}):${NOUNDERLINE} " message
+  read -p "${UNDERLINE}Please provide git commit message [${BOLD}$1${NOBOLD}]:${NOUNDERLINE} " message
+  message="${message:-$1}"
   terminus -q env:commit ${SITENAME}.${MDENV} --message="$message"
   if [ $? != 0 ]; then
     cleanup_on_error "Error committing to git." 11
@@ -336,7 +338,7 @@ drupal_regenerate_features() {
     if [ $? != 0 ]; then
       cleanup_on_error "Error regenerating features." 12
     fi
-    multidev_commit
+    multidev_commit "Regenerated features."
   fi
 }
 
@@ -351,7 +353,7 @@ multidev_merge() {
   echo -e "* If deployments are always done in batches (e.g. Annenberg) and this should be included in the next batch."
   # @todo check for this.
   echo -e "* If there is undeployed code on dev (in the future, could be added to the automation)."
-  read -p "${UNDERLINE}Merge?  [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " merge;
+  read -p "${UNDERLINE}Merge?  [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " merge;
   case $merge in
     [Yy]* )
       # @todo abstract this part so that it can be run on any env., with any framework.
@@ -404,14 +406,14 @@ multidev_delete() {
   else
     echo -e "${UNDERLINE}Delete multidev $MDENV?${NOUNDERLINE}"
   fi
-  read -p "[y]es [n]o? [y/n] " cleanup;
+  read -p "[${BOLD}y${NOBOLD}]es [n]o? [${BOLD}y${NOBOLD}/n] " cleanup;
   case $cleanup in
     [Yy]* )
       if [ "$1" != 1 ]; then
-        read -p "${UNDERLINE}Delete the branch too? [${BOLD}y/n${NOBOLD}]${NOUNDERLINE} " delete_branch;
+        read -p "${UNDERLINE}Delete the branch too? [y/${BOLD}n${NOBOLD}]${NOUNDERLINE} " delete_branch;
         case $delete_branch in
-          [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
           [Nn]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} ;;
+          [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
         esac
       else
         # Assume that we're skipping continue messages because the merge was
@@ -427,8 +429,8 @@ multidev_delete() {
 UNDERLINE=$'\033[4m'
 NOUNDERLINE=$'\033[24m'
 # Used for options.
-BOLD=$'\033[1m'
-NOBOLD=$'\033[22m'
+BOLD=$'\033[1m\033[36m'
+NOBOLD=$'\033[97m\033[22m'
 # Used for errors.
 INVERSE=$'\033[7'
 NOINVERSE=$'\033[27m'
@@ -459,5 +461,4 @@ echo -e "Thanks.  All done."
 # Deploy to live.
 # Show the status report
 #
-# @todo Allow pressing the enter key on most prompts to get a sane default.
 # @todo Ring a bell after long processes finish.

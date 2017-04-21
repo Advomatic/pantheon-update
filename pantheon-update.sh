@@ -84,6 +84,7 @@ multidev_create() {
     read -p "${UNDERLINE}Use the db/files from which environment? (dev/test/${BOLD}live${NOBOLD}) ${NOUNDERLINE}"  FROMENV
     FROMENV="${FROMENV:-$FROMENV_DEFAULT}"
     echo -e "Creating multidev ${MDENV} from ${FROMENV}.  Please wait (this can take a long time)..."
+    terminus -q env:wake ${SITENAME}.${FROMENV}
     terminus -q multidev:create ${SITENAME}.${FROMENV} ${MDENV}
     if [ $? != 0 ]; then
       >&2 echo -e "Error: Could not create environment."
@@ -100,6 +101,7 @@ multidev_create() {
       none) ;;
       *)
         echo -e "Copying DB from ${SITENAME}.${FROMENV} to ${MDENV}.  Please wait (this can take a long time)..."
+        terminus -q env:wake ${SITENAME}.${FROMENV}
         terminus -y -q env:clone-content ${SITENAME}.${FROMENV} ${MDENV}
         if [ $? != 0 ]; then
           cleanup_on_error "error cloning content from ${FROMENV} to ${MDENV}" 6
@@ -365,6 +367,7 @@ multidev_merge() {
     *)
       # @todo abstract this part so that it can be run on any env., with any framework.
       echo -e "Merging ${SITENAME}.${MDENV} to dev."
+      terminus -q env:wake ${SITENAME}.dev
       terminus -q multidev:merge-to-dev ${SITENAME}.${MDENV}
       if [ $? != 0 ]; then
         cleanup_on_error "Error merging to dev." 13
@@ -466,4 +469,3 @@ echo -e "Thanks.  All done."
 #
 # @todo Ring a bell after long processes finish.
 # @todo Core updates via a terminus command rather than drush
-# @todo wake up an env. before trying to talk to it.

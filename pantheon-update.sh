@@ -312,6 +312,9 @@ drupal_update_module() {
 # @param string $default_commit_message
 ##
 multidev_commit() {
+  # Need to clear the cache before committing, otherwise it may not recognize
+  # that files have changed.
+  terminus -q env:commit ${SITENAME}.${MDENV}
   read -p "${UNDERLINE}Please provide git commit message [${BOLD}$1${NOBOLD}]:${NOUNDERLINE} " message
   message="${message:-$1}"
   terminus -q env:commit ${SITENAME}.${MDENV} --message="$message"

@@ -302,7 +302,7 @@ drupal_update_module() {
   read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]es [n]o, I'll re-run the script later. [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " continue;
   case $continue in
     [Yy]* ) ;;
-    [Nn]* ) exit 0 ;;
+    [Nn] ) exit 0 ;;
   esac
 }
 
@@ -369,7 +369,7 @@ multidev_merge() {
       echo -e "Reverting Features."
       terminus -q drush ${SITENAME}.dev -- features-revert-all -y
       ;;
-    [Nn]* )
+    [Nn] )
       echo -e "You may run this script again when you are ready to merge and deploy."
       exit 0;
       ;;
@@ -421,7 +421,7 @@ multidev_delete() {
         terminus -q multidev:delete ${SITENAME}.${MDENV}
       fi
       ;;
-    [Nn]* ) ;;
+    [Nn] ) ;;
   esac
 }
 

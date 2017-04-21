@@ -34,9 +34,9 @@ terminus_auth() {
     echo -e " $response"
     read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]Continue or [n]login as someone else? [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " login;
     case $login in
-      [Yy]* ) ;;
-      [Nn] ) terminus auth:logout;
+      [Nn]) terminus auth:logout;
         terminus auth:login;;
+      *) ;;
     esac
   fi
 }
@@ -152,8 +152,8 @@ multidev_update() {
       echo -e "  $MULTIDEV_URL"
       read -p "${UNDERLINE}Continue [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " continue;
       case $continue in
-        [Yy]* ) ;;
-        [Nn] ) cleanup_on_error "" 0 ;;
+        [Nn]) cleanup_on_error "" 0 ;;
+        *) ;;
       esac
       ;;
   esac
@@ -301,8 +301,8 @@ drupal_update_module() {
   echo -e "${UNDERLINE}Continue with the process (committing the code)?${NOUNDERLINE}"
   read -p "${UNDERLINE}[${BOLD}y${NOBOLD}]es [n]o, I'll re-run the script later. [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " continue;
   case $continue in
-    [Yy]* ) ;;
     [Nn] ) exit 0 ;;
+    *) ;;
   esac
 }
 
@@ -355,7 +355,11 @@ multidev_merge() {
   echo -e "* If there is undeployed code on dev (in the future, could be added to the automation)."
   read -p "${UNDERLINE}Merge?  [${BOLD}y${NOBOLD}/n]${NOUNDERLINE} " merge;
   case $merge in
-    [Yy]* )
+    [Nn])
+      echo -e "You may run this script again when you are ready to merge and deploy."
+      exit 0;
+      ;;
+    *)
       # @todo abstract this part so that it can be run on any env., with any framework.
       echo -e "Merging ${SITENAME}.${MDENV} to dev."
       terminus -q multidev:merge-to-dev ${SITENAME}.${MDENV}
@@ -368,10 +372,6 @@ multidev_merge() {
       terminus -q drush ${SITENAME}.dev -- updatedb -y
       echo -e "Reverting Features."
       terminus -q drush ${SITENAME}.dev -- features-revert-all -y
-      ;;
-    [Nn] )
-      echo -e "You may run this script again when you are ready to merge and deploy."
-      exit 0;
       ;;
   esac
 }
@@ -408,12 +408,13 @@ multidev_delete() {
   fi
   read -p "[${BOLD}y${NOBOLD}]es [n]o? [${BOLD}y${NOBOLD}/n] " cleanup;
   case $cleanup in
-    [Yy]* )
+    [Nn]) ;;
+    *)
       if [ "$1" != 1 ]; then
         read -p "${UNDERLINE}Delete the branch too? [y/${BOLD}n${NOBOLD}]${NOUNDERLINE} " delete_branch;
         case $delete_branch in
-          [Nn]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} ;;
-          [Yy]* ) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
+          [Yy]) terminus -q multidev:delete ${SITENAME}.${MDENV} --delete-branch ;;
+          *) terminus -q multidev:delete ${SITENAME}.${MDENV} ;;
         esac
       else
         # Assume that we're skipping continue messages because the merge was
@@ -421,7 +422,6 @@ multidev_delete() {
         terminus -q multidev:delete ${SITENAME}.${MDENV}
       fi
       ;;
-    [Nn] ) ;;
   esac
 }
 

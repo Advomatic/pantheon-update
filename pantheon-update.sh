@@ -462,3 +462,5 @@ echo -e "Thanks.  All done."
 # Show the status report
 #
 # @todo Ring a bell after long processes finish.
+# @todo Core updates via a terminus command rather than drush
+# @todo wake up an env. before trying to talk to it.

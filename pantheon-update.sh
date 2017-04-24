@@ -9,7 +9,12 @@ terminus_check() {
   path=`which terminus`
   if [ "$path" == "" ]; then
     echo -e "${INVERSE}Either Terminus is not installed, or not installed globally.  See:${NOINVERSE}"
-    echo -e "https://github.com/pantheon-systems/terminus"
+    echo -e "  https://github.com/pantheon-systems/terminus"
+    echo -e "${INVERSE}You will also need to add terminus to your Path. "
+    echo -e "For example, if Terminus is installed at ~/.composer/vendor/bin/terminus"
+    echo -e "then you need to add that directory to your path.  E.g.${NOINVERSE}"
+    echo -e '  export PATH="$PATH:$HOME/.composer/vendor/bin"'
+    echo -e "${INVERSE}You typically add this line to ~/.profile or ~/.bash_profile .${NOINVERSE}"
     exit 1
   fi
   terminus self:info -q

@@ -444,7 +444,7 @@ NOUNDERLINE=$'\033[24m'
 BOLD=$'\033[1m\033[36m'
 NOBOLD=$'\033[97m\033[22m'
 # Used for errors.
-INVERSE=$'\033[7'
+INVERSE=$'\033[7m'
 NOINVERSE=$'\033[27m'
 
 terminus_check

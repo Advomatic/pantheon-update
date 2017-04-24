@@ -6,11 +6,17 @@
 # Check if Terminus is installed correctly.
 ###
 terminus_check() {
+  path=`which terminus`
+  if [ "$path" == "" ]; then
+    echo -e "${INVERSE}Either Terminus is not installed, or not installed globally.  See:${NOINVERSE}"
+    echo -e "https://github.com/pantheon-systems/terminus"
+    exit 1
+  fi
   terminus self:info -q
   if [ $? == 0 ]; then
     echo -e "Terminus is installed!"
   else
-    >&2  echo -e "${INVERSE}Either terminus is not installed, not installed globally, or is < 1.0. Please install Terminus and try again.${NOINVERSE}"
+    >&2  echo -e "${INVERSE}Terminus is not acting as expected.  Do you have version >= 1.0?${NOINVERSE}"
     exit 1
   fi
 }

@@ -82,6 +82,8 @@ multidev_create() {
   read -p "${UNDERLINE}What should the multidev be called. You may use the name of an existing branch. [${BOLD}${MDENV_DEFAULT}${NOBOLD}]? ${NOUNDERLINE}"  MDENV
   MDENV="${MDENV:-$MDENV_DEFAULT}"
 
+  # @todo Validate that ${MDENV} is fewer than 12 chars (Pantheons limit for multi-devs).
+
   # @todo Make this happen.  We'll also need to determine the framework.
   #echo -e "Pro tip:"
   #echo -e "To get to this point directly, just use arguments."

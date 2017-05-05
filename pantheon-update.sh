@@ -449,10 +449,13 @@ UNDERLINE=$'\033[4m'
 NOUNDERLINE=$'\033[24m'
 # Used for options.
 BOLD=$'\033[1m\033[36m'
-NOBOLD=$'\033[97m\033[22m'
+NOBOLD=$'\033[39m\033[22m'
 # Used for errors.
 INVERSE=$'\033[7m'
 NOINVERSE=$'\033[27m'
+# Used for pro tips
+TIP=$'\033[33m'
+NOTIP=$'\033[39m'
 
 terminus_check
 terminus_auth
